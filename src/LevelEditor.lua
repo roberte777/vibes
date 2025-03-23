@@ -27,6 +27,7 @@ function LevelEditor.new(levelPath)
     self.mapSizeRows = 18
     self.mapSizeCols = 32
     self.levelName = "New Level"
+    self.lastToggledTileType = nil -- Store the last toggled tile type for drag toggling
 
     -- Initialize UI button positions for hit detection
     self.modeButton = { x = 20, y = 100, width = 180, height = 30 }
@@ -742,6 +743,11 @@ function LevelEditor:mousepressed(x, y, button)
                         local row = self.map[mapY]
                         local currentTile = row:sub(mapX, mapX)
                         local newTile = currentTile == "1" and "0" or "1"
+                        
+                        -- Store the original tile type for drag toggling
+                        self.lastToggledTileType = currentTile
+                        self.isMouseDown = true
+                        
                         self.map[mapY] = row:sub(1, mapX - 1) .. newTile .. row:sub(mapX + 1)
                     else
                         -- Check if clicked on a waypoint
@@ -769,6 +775,8 @@ end
 function LevelEditor:mousereleased(x, y, button)
     if button == 1 then
         self.isDraggingWaypoint = false
+        self.isMouseDown = false
+        self.lastToggledTileType = nil
     end
 end
 
@@ -1002,6 +1010,23 @@ function LevelEditor:mousemoved(x, y, dx, dy)
         -- Update waypoint position
         self.waypoints[self.selectedWaypoint].x = mapX
         self.waypoints[self.selectedWaypoint].y = mapY
+    elseif self.editingMode == "map" and self.isMouseDown and self.lastToggledTileType then
+        -- Handle tile toggling during mouse drag
+        local mapX = math.floor((x - self.mapOffsetX) / self.tileSize) + 1
+        local mapY = math.floor((y - self.mapOffsetY) / self.tileSize) + 1
+        
+        -- Make sure drag is within map bounds
+        if mapX >= 1 and mapX <= #self.map[1] and mapY >= 1 and mapY <= #self.map then
+            -- Only change tiles that match the original tile type
+            local row = self.map[mapY]
+            local currentTile = row:sub(mapX, mapX)
+            
+            -- Only toggle if the current tile matches the type we started with
+            if currentTile == self.lastToggledTileType then
+                local newTile = currentTile == "1" and "0" or "1"
+                self.map[mapY] = row:sub(1, mapX - 1) .. newTile .. row:sub(mapX + 1)
+            end
+        end
     end
 end
 
