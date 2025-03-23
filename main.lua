@@ -40,14 +40,17 @@ function love.load()
 
     -- Create buttons
     buttons = {
-        { text = "Start Game", action = function() 
-            gameState = "level_select" 
-            -- Create level select instance if it doesn't exist
-            if not levelSelect then
-                levelSelect = LevelSelect.new()
+        {
+            text = "Start Game",
+            action = function()
+                gameState = "level_select"
+                -- Create level select instance if it doesn't exist
+                if not levelSelect then
+                    levelSelect = LevelSelect.new()
+                end
             end
-        end },
-        { text = "Load Game",  action = function() gameState = "load" end },
+        },
+        { text = "Load Game", action = function() gameState = "load" end },
         {
             text = "Level Creator",
             action = function()
@@ -58,7 +61,7 @@ function love.load()
                 end
             end
         },
-        { text = "Exit", action = function() love.event.quit() end }
+        { text = "Exit",      action = function() love.event.quit() end }
     }
 
     -- Text input handlers

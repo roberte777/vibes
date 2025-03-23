@@ -87,7 +87,8 @@ function LevelEditor.new()
             action = function()
                 if self:saveLevel() then
                     -- Show success message temporarily
-                    self.editorButtons.save.saveMessage = "Saved to: " .. love.filesystem.getSaveDirectory() .. "/levels"
+                    self.editorButtons.save.saveMessage = "Saved to: " ..
+                        love.filesystem.getSaveDirectory() .. "/levels/custom"
                     self.editorButtons.save.messageTimer = 6 -- Show for 6 seconds
                 else
                     self.editorButtons.save.saveMessage = "Failed to save!"
@@ -105,11 +106,11 @@ function LevelEditor.new()
             messageTimer = 0,
             action = function()
                 if self.selectedLevel then
-                    local content = love.filesystem.read("levels/" .. self.selectedLevel)
+                    local content = love.filesystem.read("levels/custom/" .. self.selectedLevel)
                     if content then
                         local success = false
                         -- Attempt to save to the project directory
-                        local file, err = io.open("levels/" .. self.selectedLevel, "w")
+                        local file, err = io.open("levels/custom/" .. self.selectedLevel, "w")
                         if file then
                             file:write(content)
                             file:close()
@@ -154,7 +155,10 @@ end
 -- Load all available levels from the levels directory
 function LevelEditor:loadLevelsList()
     self.levels = {}
-    local items = love.filesystem.getDirectoryItems("levels")
+    -- Create the custom levels directory if it doesn't exist
+    love.filesystem.createDirectory("levels/custom")
+
+    local items = love.filesystem.getDirectoryItems("levels/custom")
     for _, file in ipairs(items) do
         if file:match("%.json$") then
             table.insert(self.levels, file)
@@ -164,7 +168,7 @@ end
 
 -- Load a specific level from file
 function LevelEditor:loadLevel(levelFilename)
-    local content = love.filesystem.read("levels/" .. levelFilename)
+    local content = love.filesystem.read("levels/custom/" .. levelFilename)
     if content then
         -- Use the JSON library to parse the level data
         local success, levelData = pcall(json.decode, content)
@@ -192,15 +196,15 @@ end
 function LevelEditor:saveLevel()
     if not self.selectedLevel then return false end
 
-    -- Ensure the levels directory exists
-    love.filesystem.createDirectory("levels")
+    -- Ensure the custom levels directory exists
+    love.filesystem.createDirectory("levels/custom")
 
     -- Debug output
-    print("Attempting to save to: " .. love.filesystem.getSaveDirectory() .. "/levels/" .. self.selectedLevel)
+    print("Attempting to save to: " .. love.filesystem.getSaveDirectory() .. "/levels/custom/" .. self.selectedLevel)
 
     -- Check if we can write to the directory
     local success, message = pcall(function()
-        local testFile = "levels/test_write.tmp"
+        local testFile = "levels/custom/test_write.tmp"
         love.filesystem.write(testFile, "test")
         local exists = love.filesystem.getInfo(testFile)
         if exists then
@@ -219,7 +223,7 @@ function LevelEditor:saveLevel()
     local levelData = {}
 
     -- Try to read and parse existing data
-    local content = love.filesystem.read("levels/" .. self.selectedLevel)
+    local content = love.filesystem.read("levels/custom/" .. self.selectedLevel)
     if content then
         local success, existingData = pcall(json.decode, content)
         if success and existingData then
@@ -246,7 +250,7 @@ function LevelEditor:saveLevel()
         return false
     end
 
-    local success, message = pcall(love.filesystem.write, "levels/" .. self.selectedLevel, jsonStr)
+    local success, message = pcall(love.filesystem.write, "levels/custom/" .. self.selectedLevel, jsonStr)
     if not success then
         print("Failed to write file: " .. tostring(message))
         return false
@@ -257,8 +261,8 @@ end
 
 -- Create a new level with default settings
 function LevelEditor:createNewLevel(name, description)
-    -- Ensure the levels directory exists
-    love.filesystem.createDirectory("levels")
+    -- Ensure the custom levels directory exists
+    love.filesystem.createDirectory("levels/custom")
 
     -- Generate a filename based on the level name
     local filename = name:lower():gsub(" ", "_") .. ".json"
@@ -313,7 +317,7 @@ function LevelEditor:createNewLevel(name, description)
         return false
     end
 
-    local success, message = pcall(love.filesystem.write, "levels/" .. filename, jsonStr)
+    local success, message = pcall(love.filesystem.write, "levels/custom/" .. filename, jsonStr)
     if not success then
         print("Failed to write file: " .. tostring(message))
         return false
