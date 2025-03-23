@@ -8,6 +8,11 @@ $destDir = "C:\Users\Ethan\AppData\Roaming\LOVE\vibes\levels\default"
 if (-not (Test-Path $destDir)) {
     Write-Host "Creating destination directory: $destDir"
     New-Item -ItemType Directory -Path $destDir -Force | Out-Null
+} else {
+    # Remove all existing files from the destination directory
+    Write-Host "Cleaning destination directory: $destDir"
+    Get-ChildItem -Path $destDir -File | Remove-Item -Force
+    Write-Host "Destination directory cleaned."
 }
 
 # Check if source directory exists
@@ -28,4 +33,4 @@ if ($files.Count -eq 0) {
         Copy-Item -Path $file.FullName -Destination $destDir -Force
     }
     Write-Host "Successfully copied $($files.Count) level files." -ForegroundColor Green
-}
+}# PowerShell script to copy level files to LÖVE save directory
