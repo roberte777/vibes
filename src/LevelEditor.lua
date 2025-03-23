@@ -702,18 +702,18 @@ function LevelEditor:mousepressed(x, y, button)
                 if self.addWaypointButton and
                     x >= self.addWaypointButton.x and x <= self.addWaypointButton.x + self.addWaypointButton.width and
                     y >= self.addWaypointButton.y and y <= self.addWaypointButton.y + self.addWaypointButton.height then
-                    -- Add new waypoint at the end (before the final waypoint)
+                    -- Add new waypoint at the end of the path
                     if #self.waypoints >= 2 then
                         local lastPoint = self.waypoints[#self.waypoints]
-                        local secondLastPoint = self.waypoints[#self.waypoints - 1]
-
-                        -- Create midpoint between second-last and last waypoint
-                        local newX = (lastPoint.x + secondLastPoint.x) / 2
-                        local newY = (lastPoint.y + secondLastPoint.y) / 2
-
-                        -- Insert before the last waypoint
-                        table.insert(self.waypoints, #self.waypoints, { x = newX, y = newY })
-                        self.selectedWaypoint = #self.waypoints - 1
+                        
+                        -- Create a new point extending the path from the last waypoint
+                        -- Place it one grid cell away in the x direction
+                        local newX = math.min(lastPoint.x + 1, #self.map[1] - 1)
+                        local newY = lastPoint.y
+                        
+                        -- Add the new waypoint at the end
+                        table.insert(self.waypoints, { x = newX, y = newY })
+                        self.selectedWaypoint = #self.waypoints
                     end
                     return
                 end
