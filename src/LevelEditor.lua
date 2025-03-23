@@ -392,10 +392,6 @@ function LevelEditor:draw()
     love.graphics.setFont(self.editorFont)
     local screenWidth, screenHeight = love.graphics.getWidth(), love.graphics.getHeight()
 
-    -- Draw editor title
-    love.graphics.setColor(self.colors.title)
-    love.graphics.print("Level Editor - " .. self.levelName, 20, 20)
-
     if self.editorState == "selectLevel" then
         self:drawLevelSelector()
     elseif self.editorState == "createLevel" then
