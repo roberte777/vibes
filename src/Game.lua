@@ -1,5 +1,7 @@
 local json = require("vendor.json.json")
 local Enemy = require("src.Enemy")
+local Shop = require("src.Shop")
+local GoblinUnit = require("src.GoblinUnit")
 
 -- Game Class
 local Game = {}
@@ -20,6 +22,12 @@ function Game.new(levelPath)
     self.spawnTimer = 0
     self.lives = 20
     self.resources = 100
+    self.mapOpen = false
+    
+    -- Shop and units
+    self.shop = Shop.new()
+    self.placingUnit = false
+    self.units = {}
 
     -- Load level data
     self:loadLevel()
@@ -61,6 +69,16 @@ function Game:update(dt)
             self.resources = self.resources + 10 -- Reward for killing
             table.remove(self.enemies, i)
         end
+    end
+    
+    -- Update units
+    for _, unit in ipairs(self.units) do
+        unit:update(dt, self.enemies)
+    end
+    
+    -- No need to update shop's active units as we're managing units directly in Game
+    if self.shop then
+        self.shop:update(dt)
     end
 
     -- Check if we need to spawn enemies
@@ -153,6 +171,42 @@ function Game:draw()
     for _, enemy in ipairs(self.enemies) do
         enemy:draw(offsetX, offsetY, self.tileSize)
     end
+    
+    -- Draw units
+    for _, unit in ipairs(self.units) do
+        unit:draw(offsetX, offsetY, self.tileSize)
+    end
+    
+    -- Draw unit placement indicator if placing a unit
+    if self.placingUnit and self.hoverTile then
+        local unitType = self.shop:getSelectedUnit()
+        if unitType then
+            local typeData = GoblinUnit.getTypes()[unitType]
+            
+            -- Calculate proper position for preview
+            local screenWidth, screenHeight = love.graphics.getWidth(), love.graphics.getHeight()
+            local mapRows = #self.map
+            local mapCols = #self.map[1]
+            local offsetX = (screenWidth - (mapCols * self.tileSize)) / 2
+            local offsetY = (screenHeight - (mapRows * self.tileSize)) / 2
+            
+            -- Match exactly the same calculation as in GoblinUnit:draw
+            local tileX = self.hoverTile.x
+            local tileY = self.hoverTile.y
+            
+            -- Convert to screen coordinates (center of the tile)
+            local previewX = offsetX + (tileX - 1) * self.tileSize + self.tileSize / 2
+            local previewY = offsetY + (tileY - 1) * self.tileSize + self.tileSize / 2
+            
+            -- Draw semi-transparent unit at hover position
+            love.graphics.setColor(typeData.color[1], typeData.color[2], typeData.color[3], 0.5)
+            love.graphics.circle("fill", previewX, previewY, typeData.size / 2)
+            
+            -- Draw range indicator
+            love.graphics.setColor(1, 1, 1, 0.2)
+            love.graphics.circle("line", previewX, previewY, typeData.range * self.tileSize)
+        end
+    end
 
     -- Draw UI elements
     self:drawUI(screenWidth, screenHeight)
@@ -160,6 +214,14 @@ function Game:draw()
     -- Draw start button if game not started
     if not self.gameStarted then
         self:drawStartButton(screenWidth, screenHeight)
+    end
+    
+    -- Draw map toggle button
+    self:drawMapButton(screenWidth, screenHeight)
+    
+    -- Draw shop if map is open
+    if self.mapOpen and self.shop then
+        self.shop:draw(screenWidth, screenHeight, self.resources)
     end
 end
 
@@ -321,8 +383,57 @@ function Game:drawStartButton(screenWidth, screenHeight)
     }
 end
 
+function Game:drawMapButton(screenWidth, screenHeight)
+    -- Draw map toggle button in top right
+    local buttonWidth = 120
+    local buttonHeight = 40
+    local buttonX = screenWidth - buttonWidth - 20   -- 20px from right edge
+    local buttonY = 20                               -- 20px from top edge
+    
+    -- Change color based on state
+    if self.mapOpen then
+        love.graphics.setColor(0.7, 0.2, 0.3, 1) -- Red when open
+    else
+        love.graphics.setColor(0.2, 0.3, 0.7, 1) -- Blue when closed
+    end
+
+    love.graphics.rectangle("fill", buttonX, buttonY, buttonWidth, buttonHeight, 10, 10)
+
+    -- Draw button text
+    love.graphics.setColor(1, 1, 1, 1)
+    love.graphics.setFont(love.graphics.newFont(16))
+    local text = self.mapOpen and "Close Shop" or "Open Shop"
+    local textWidth = love.graphics.getFont():getWidth(text)
+    love.graphics.print(text, buttonX + buttonWidth / 2 - textWidth / 2, buttonY + 10)
+
+    -- Store button position for hit detection
+    self.mapButton = {
+        x = buttonX,
+        y = buttonY,
+        width = buttonWidth,
+        height = buttonHeight
+    }
+end
+
 function Game:mousepressed(x, y, button)
     if button == 1 then -- Left click
+        -- Check if map button was clicked
+        if self.mapButton and
+            x >= self.mapButton.x and x <= self.mapButton.x + self.mapButton.width and
+            y >= self.mapButton.y and y <= self.mapButton.y + self.mapButton.height then
+            -- Toggle map/shop
+            self.mapOpen = not self.mapOpen
+            
+            if self.mapOpen then
+                self.shop:open()
+            else
+                self.shop:close()
+                self.placingUnit = false
+            end
+            
+            return "map_toggled"
+        end
+    
         -- Check if start button was clicked
         if not self.gameStarted and self.startButton and
             x >= self.startButton.x and x <= self.startButton.x + self.startButton.width and
@@ -333,11 +444,88 @@ function Game:mousepressed(x, y, button)
             self.spawnTimer = 0
             return "game_started"
         end
-
-        -- Add check for tower placement here if needed
+        
+        -- Check if shop was clicked
+        if self.mapOpen and self.shop:mousepressed(x, y, button, self.resources) then
+            self.placingUnit = true
+            return "unit_selected"
+        end
+        
+        -- If placing a unit and clicked on the map
+        if self.placingUnit and self.hoverTile then
+            local unitType = self.shop:getSelectedUnit()
+            if unitType then
+                -- Check if tile is valid for placement (not on path)
+                local mapX = self.hoverTile.x
+                local mapY = self.hoverTile.y
+                
+                -- Check if tile is within map bounds
+                if mapY >= 1 and mapY <= #self.map and
+                   mapX >= 1 and mapX <= #self.map[1] then
+                    
+                    -- Check if the tile is a grass tile (1)
+                    local tileChar = self.map[mapY]:sub(mapX, mapX)
+                    if tileChar == "1" then
+                        -- Check if there's already a unit on this tile
+                        local tileOccupied = false
+                        for _, unit in ipairs(self.units) do
+                            -- Use the same coordinate system for comparison as when we place units
+                            if unit.position.x == mapX - 1 and unit.position.y == mapY - 1 then
+                                tileOccupied = true
+                                break
+                            end
+                        end
+                        
+                        if not tileOccupied then
+                            -- Create a new unit using coordinates that match how we draw them
+                            -- The position.x and position.y in GoblinUnit should match the tile coordinates
+                            local newUnit = GoblinUnit.new(unitType, {x = mapX - 1, y = mapY - 1})
+                            table.insert(self.units, newUnit)
+                            
+                            -- Deduct cost
+                            self.resources = self.resources - newUnit.cost
+                            
+                            -- Reset placement state
+                            self.placingUnit = false
+                            self.shop.selectedUnit = nil
+                            
+                            return "unit_placed"
+                        end
+                    end
+                end
+            end
+        end
     end
 
     return nil
+end
+
+function Game:mousemoved(x, y)
+    -- Update shop hover state
+    if self.mapOpen then
+        self.shop:mousemoved(x, y)
+    end
+    
+    -- Update hover tile for unit placement
+    if self.placingUnit then
+        local screenWidth, screenHeight = love.graphics.getWidth(), love.graphics.getHeight()
+        local mapRows = #self.map
+        local mapCols = #self.map[1]
+        local offsetX = (screenWidth - (mapCols * self.tileSize)) / 2
+        local offsetY = (screenHeight - (mapRows * self.tileSize)) / 2
+        
+        -- Calculate map tile coordinates from mouse position
+        local tileX = math.floor((x - offsetX) / self.tileSize) + 1
+        local tileY = math.floor((y - offsetY) / self.tileSize) + 1
+        
+        -- Store hover tile if within map bounds
+        if tileX >= 1 and tileX <= mapCols and
+           tileY >= 1 and tileY <= mapRows then
+            self.hoverTile = {x = tileX, y = tileY}
+        else
+            self.hoverTile = nil
+        end
+    end
 end
 
 return Game

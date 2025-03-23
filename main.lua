@@ -198,6 +198,9 @@ function love.mousemoved(x, y, dx, dy)
         end
     elseif gameState == "editor" then
         levelEditor:mousemoved(x, y, dx, dy)
+    elseif gameState == "game" and game then
+        -- Forward mouse movement to game for shop hover and unit placement
+        game:mousemoved(x, y)
     end
 end
 
