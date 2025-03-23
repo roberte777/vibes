@@ -179,7 +179,7 @@ function love.keypressed(key)
     end
 end
 
-function love.mousemoved(x, y)
+function love.mousemoved(x, y, dx, dy)
     if gameState == "menu" then
         local centerX = love.graphics.getWidth() / 2
         local centerY = love.graphics.getHeight() / 2
@@ -196,6 +196,8 @@ function love.mousemoved(x, y)
                 break
             end
         end
+    elseif gameState == "editor" then
+        levelEditor:mousemoved(x, y, dx, dy)
     end
 end
 
@@ -227,6 +229,10 @@ function love.mousepressed(x, y, button)
                     gameState = "game"
                     -- Initialize game with selected level
                     game = Game.new(currentLevel)
+                elseif result == "edit_level" and levelPath then
+                    -- Open level in the editor
+                    gameState = "editor"
+                    levelEditor = LevelEditor.new(levelPath)
                 else
                     gameState = result
                 end

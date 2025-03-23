@@ -72,6 +72,23 @@ function LevelSelect:draw()
     local titleWidth = love.graphics.getFont():getWidth(title)
     love.graphics.print(title, screenWidth / 2 - titleWidth / 2, 30)
 
+    -- Draw "Create New Level" button
+    love.graphics.setFont(love.graphics.newFont(18))
+    love.graphics.setColor(0.3, 0.8, 0.3, 1) -- Green
+    love.graphics.rectangle("fill", screenWidth - 220, 80, 200, 40, 5, 5)
+    love.graphics.setColor(1, 1, 1, 1)
+    local newLevelText = "Create New Level"
+    local newLevelWidth = love.graphics.getFont():getWidth(newLevelText)
+    love.graphics.print(newLevelText, screenWidth - 220 + (200 - newLevelWidth) / 2, 90)
+
+    -- Store button position for hit detection
+    self.createNewLevelButton = {
+        x = screenWidth - 220,
+        y = 80,
+        width = 200,
+        height = 40
+    }
+
     -- Draw level grid
     local startIdx = (self.currentPage - 1) * self.levelsPerPage + 1
     local endIdx = math.min(startIdx + self.levelsPerPage - 1, #self.levels)
@@ -97,6 +114,11 @@ function LevelSelect:draw()
             self:drawMapPreview(level.data.map, x, y, self.previewSize)
         end
 
+        -- Draw waypoints preview if available
+        if level.data.waypoints and #level.data.waypoints > 0 then
+            self:drawWaypointsPreview(level.data.waypoints, x, y, self.previewSize, #level.data.map, #level.data.map[1])
+        end
+
         -- Draw default level indicator if applicable
         if level.isDefault then
             love.graphics.setColor(0.9, 0.7, 0.2, 1) -- Gold color
@@ -113,6 +135,25 @@ function LevelSelect:draw()
         love.graphics.setColor(1, 1, 1, 1)
         local nameWidth = love.graphics.getFont():getWidth(level.name)
         love.graphics.print(level.name, x + self.previewSize / 2 - nameWidth / 2, y + self.previewSize + 5)
+
+        -- Draw edit button
+        love.graphics.setColor(0.3, 0.6, 0.9, 1)
+        love.graphics.rectangle("fill", x + self.previewSize - 30, y + 5, 25, 25, 3, 3)
+
+        -- Draw edit icon
+        love.graphics.setColor(1, 1, 1, 1)
+        love.graphics.setLineWidth(2)
+        love.graphics.line(x + self.previewSize - 25, y + 15, x + self.previewSize - 10, y + 15)
+        love.graphics.line(x + self.previewSize - 25, y + 20, x + self.previewSize - 10, y + 20)
+        love.graphics.line(x + self.previewSize - 20, y + 10, x + self.previewSize - 20, y + 25)
+
+        -- Store edit button position for hit detection
+        level.editButton = {
+            x = x + self.previewSize - 30,
+            y = y + 5,
+            width = 25,
+            height = 25
+        }
     end
 
     -- Draw navigation arrows if needed
@@ -170,9 +211,62 @@ function LevelSelect:drawMapPreview(map, x, y, size)
     end
 end
 
+function LevelSelect:drawWaypointsPreview(waypoints, x, y, size, rows, cols)
+    if not waypoints or #waypoints < 2 then
+        return
+    end
+
+    -- Calculate scale factors
+    local tileWidth = size / cols
+    local tileHeight = size / rows
+
+    -- Draw waypoint path
+    love.graphics.setColor(1, 0, 0, 0.7) -- Red with transparency
+    love.graphics.setLineWidth(2)
+
+    for i = 1, #waypoints - 1 do
+        local current = waypoints[i]
+        local next = waypoints[i + 1]
+
+        love.graphics.line(
+            x + current.x * tileWidth + tileWidth / 2,
+            y + current.y * tileHeight + tileHeight / 2,
+            x + next.x * tileWidth + tileWidth / 2,
+            y + next.y * tileHeight + tileHeight / 2
+        )
+    end
+
+    -- Draw start and end points
+    if #waypoints > 0 then
+        -- Start point (green)
+        local start = waypoints[1]
+        love.graphics.setColor(0, 1, 0, 1)
+        love.graphics.circle("fill",
+            x + start.x * tileWidth + tileWidth / 2,
+            y + start.y * tileHeight + tileHeight / 2,
+            3)
+
+        -- End point (red)
+        local endPoint = waypoints[#waypoints]
+        love.graphics.setColor(1, 0, 0, 1)
+        love.graphics.circle("fill",
+            x + endPoint.x * tileWidth + tileWidth / 2,
+            y + endPoint.y * tileHeight + tileHeight / 2,
+            3)
+    end
+end
+
 function LevelSelect:mousepressed(x, y, button)
     if button == 1 then -- Left click
         local screenWidth, screenHeight = love.graphics.getWidth(), love.graphics.getHeight()
+
+        -- Check if "Create New Level" button was clicked
+        if self.createNewLevelButton and
+            x >= self.createNewLevelButton.x and x <= self.createNewLevelButton.x + self.createNewLevelButton.width and
+            y >= self.createNewLevelButton.y and y <= self.createNewLevelButton.y + self.createNewLevelButton.height then
+            -- Create a new level
+            return "edit_level", nil
+        end
 
         -- Check if back button was clicked
         if x >= 20 and x <= 150 and y >= screenHeight - 40 and y <= screenHeight - 10 then
@@ -187,6 +281,7 @@ function LevelSelect:mousepressed(x, y, button)
         local endIdx = math.min(startIdx + self.levelsPerPage - 1, #self.levels)
 
         for i = startIdx, endIdx do
+            local level = self.levels[i]
             local idx = i - startIdx
             local row = math.floor(idx / self.gridSize)
             local col = idx % self.gridSize
@@ -194,10 +289,21 @@ function LevelSelect:mousepressed(x, y, button)
             local levelX = gridStartX + col * (self.previewSize + self.spacing)
             local levelY = gridStartY + row * (self.previewSize + self.spacing + 30)
 
+            -- Check if edit button was clicked
+            if level.editButton and
+                x >= level.editButton.x and x <= level.editButton.x + level.editButton.width and
+                y >= level.editButton.y and y <= level.editButton.y + level.editButton.height then
+                -- Edit the level
+                return "edit_level", level.path
+            end
+
+            -- Check if level preview was clicked (play the level)
             if x >= levelX and x <= levelX + self.previewSize and
-                y >= levelY and y <= levelY + self.previewSize then
+                y >= levelY and y <= levelY + self.previewSize and
+                not (x >= level.editButton.x and x <= level.editButton.x + level.editButton.width and
+                    y >= level.editButton.y and y <= level.editButton.y + level.editButton.height) then
                 -- Level selected
-                self.selectedLevel = self.levels[i].path
+                self.selectedLevel = level.path
                 return "play_level", self.selectedLevel
             end
         end
