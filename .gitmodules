@@ -1,3 +1,9 @@
 [submodule "vendor/push"]
 	path = vendor/push
 	url = https://github.com/Ulydev/push
+[submodule "deps/json"]
+	path = deps/json
+	url = https://github.com/rxi/json.lua
+[submodule "vendor/json"]
+	path = vendor/json
+	url = https://github.com/rxi/json.lua
