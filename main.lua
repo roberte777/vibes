@@ -5,6 +5,10 @@
 local json = require("vendor.json.json")
 -- Import LevelEditor class
 local LevelEditor = require("src.LevelEditor")
+-- Import LevelSelect class
+local LevelSelect = require("src.LevelSelect")
+-- Import Game class
+local Game = require("src.Game")
 
 -- Menu state management
 local gameState = "menu"
@@ -13,6 +17,12 @@ local selectedButton = 1
 
 -- Level editor instance
 local levelEditor = nil
+-- Level select instance
+local levelSelect = nil
+-- Game instance
+local game = nil
+-- Current level path
+local currentLevel = nil
 
 -- Colors
 local colors = {
@@ -30,7 +40,13 @@ function love.load()
 
     -- Create buttons
     buttons = {
-        { text = "Start Game", action = function() gameState = "game" end },
+        { text = "Start Game", action = function() 
+            gameState = "level_select" 
+            -- Create level select instance if it doesn't exist
+            if not levelSelect then
+                levelSelect = LevelSelect.new()
+            end
+        end },
         { text = "Load Game",  action = function() gameState = "load" end },
         {
             text = "Level Creator",
@@ -52,8 +68,14 @@ end
 function love.update(dt)
     if gameState == "menu" then
         -- Menu logic here
+    elseif gameState == "level_select" then
+        -- Update level select screen
+        levelSelect:update(dt)
     elseif gameState == "game" then
         -- Game logic will go here
+        if game then
+            game:update(dt)
+        end
     elseif gameState == "load" then
         -- Load game logic will go here
     elseif gameState == "editor" then
@@ -68,8 +90,16 @@ function love.draw()
 
     if gameState == "menu" then
         drawMenu()
+    elseif gameState == "level_select" then
+        levelSelect:draw()
     elseif gameState == "game" then
-        love.graphics.print("Game screen - not implemented yet", 100, 100)
+        if game then
+            game:draw()
+        else
+            -- Fallback if game not initialized
+            love.graphics.print("Game screen - not initialized", 100, 100)
+            love.graphics.print("Level: " .. (currentLevel or "None"), 100, 130)
+        end
     elseif gameState == "load" then
         love.graphics.print("Load game screen - not implemented yet", 100, 100)
     elseif gameState == "editor" then
@@ -137,6 +167,12 @@ function love.keypressed(key)
         end
     elseif gameState == "editor" then
         levelEditor:keypressed(key)
+    elseif gameState == "game" then
+        -- Handle back to menu on escape
+        if key == "escape" then
+            gameState = "menu"
+            game = nil
+        end
     end
 end
 
@@ -178,12 +214,40 @@ function love.mousepressed(x, y, button)
                     break
                 end
             end
+        elseif gameState == "level_select" then
+            -- Forward mouse press to level select
+            local result, levelPath = levelSelect:mousepressed(x, y, button)
+            -- Check if level select wants us to change game state
+            if result then
+                if result == "play_level" and levelPath then
+                    currentLevel = levelPath
+                    gameState = "game"
+                    -- Initialize game with selected level
+                    game = Game.new(currentLevel)
+                else
+                    gameState = result
+                end
+            end
         elseif gameState == "editor" then
             -- Forward mouse press to level editor
             local result = levelEditor:mousepressed(x, y, button)
             -- Check if editor wants us to change game state
             if result then
                 gameState = result
+            end
+        elseif gameState == "game" and game then
+            -- Forward mouse press to game
+            local result = game:mousepressed(x, y, button)
+            -- Handle any game state changes
+            if result then
+                if result == "menu" then
+                    gameState = "menu"
+                    game = nil
+                elseif result == "start_game" then
+                    -- This is where actual gameplay would start
+                    -- For now we'll just stay in the same state
+                    print("Starting game with level: " .. (currentLevel or "unknown"))
+                end
             end
         end
     end

@@ -1,4 +1,8 @@
 {
+    "initialResources": 100,
+    "maxLives": 20,
+    "description": "A winding path from right to left, spanning all columns.",
+    "level": 1,
     "startPosition": [
         0,
         0
@@ -9,16 +13,17 @@
     ],
     "waves": [
         {
+            "waveNumber": 1,
             "enemies": [
                 {
                     "enemyType": "basic",
                     "count": 10,
                     "spawnInterval": 1.5
                 }
-            ],
-            "waveNumber": 1
+            ]
         },
         {
+            "waveNumber": 2,
             "enemies": [
                 {
                     "enemyType": "basic",
@@ -30,10 +35,10 @@
                     "count": 5,
                     "spawnInterval": 0.8
                 }
-            ],
-            "waveNumber": 2
+            ]
         }
     ],
+    "name": "Starting Level",
     "map": [
         "00111111111111111111111111111110",
         "10011111111111111111111111111100",
@@ -53,10 +58,5 @@
         "11111111111111100011111111111111",
         "11111111111111110111111111111111",
         "11111111111111111111111111111111"
-    ],
-    "initialResources": 100,
-    "maxLives": 20,
-    "name": "Starting Level",
-    "description": "A winding path from right to left, spanning all columns.",
-    "level": 1
+    ]
 }
