@@ -1,0 +1,3 @@
+[submodule "vendor/push"]
+	path = vendor/push
+	url = https://github.com/Ulydev/push
