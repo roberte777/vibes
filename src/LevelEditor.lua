@@ -753,6 +753,7 @@ function LevelEditor:mousepressed(x, y, button)
                         -- Check if clicked on a waypoint
                         self.selectedWaypoint = nil
                         for i, point in ipairs(self.waypoints) do
+                            -- Calculate waypoint position on screen (centered in grid cell)
                             local wpX = self.mapOffsetX + point.x * self.tileSize + self.tileSize / 2
                             local wpY = self.mapOffsetY + point.y * self.tileSize + self.tileSize / 2
 
@@ -871,6 +872,7 @@ function LevelEditor:drawWaypoints()
             local current = self.waypoints[i]
             local next = self.waypoints[i + 1]
 
+            -- Draw line between waypoints (centered on grid cells)
             love.graphics.line(
                 offsetX + current.x * self.tileSize + self.tileSize / 2,
                 offsetY + current.y * self.tileSize + self.tileSize / 2,
@@ -881,6 +883,7 @@ function LevelEditor:drawWaypoints()
 
         -- Draw waypoint markers
         for i, point in ipairs(self.waypoints) do
+            -- Center the waypoint on the grid cell
             local x = offsetX + point.x * self.tileSize + self.tileSize / 2
             local y = offsetY + point.y * self.tileSize + self.tileSize / 2
 
@@ -1000,14 +1003,15 @@ end
 
 function LevelEditor:mousemoved(x, y, dx, dy)
     if self.editingMode == "waypoints" and self.isDraggingWaypoint and self.selectedWaypoint then
-        local mapX = (x - self.mapOffsetX) / self.tileSize
-        local mapY = (y - self.mapOffsetY) / self.tileSize
+        -- Get grid coordinate (rounded to nearest whole grid cell)
+        local mapX = math.floor((x - self.mapOffsetX) / self.tileSize + 0.5)
+        local mapY = math.floor((y - self.mapOffsetY) / self.tileSize + 0.5)
 
         -- Restrict to map bounds
         mapX = math.max(0, math.min(mapX, #self.map[1] - 1))
         mapY = math.max(0, math.min(mapY, #self.map - 1))
 
-        -- Update waypoint position
+        -- Update waypoint position to integer grid coordinates
         self.waypoints[self.selectedWaypoint].x = mapX
         self.waypoints[self.selectedWaypoint].y = mapY
     elseif self.editingMode == "map" and self.isMouseDown and self.lastToggledTileType then
