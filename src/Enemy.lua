@@ -16,19 +16,19 @@ function Enemy.new(waypoints, enemyType)
 
     -- Enemy stats based on type
     if self.type == "basic" then
-        self.health = 100
-        self.speed = 30                   -- pixels per second
+        self.health = 50  -- Half of original 100
+        self.speed = 15 * 0.25  -- Half of original 30, still with 0.25 factor
         self.color = { 0.2, 0.2, 0.8, 1 } -- Blue
         self.size = 20
     elseif self.type == "fast" then
-        self.health = 60
-        self.speed = 60                   -- pixels per second
+        self.health = 30  -- Half of original 60
+        self.speed = 30 * 0.25  -- Half of original 60, still with 0.25 factor
         self.color = { 0.8, 0.2, 0.2, 1 } -- Red
         self.size = 15
     else
         -- Default values
-        self.health = 100
-        self.speed = 30
+        self.health = 50  -- Half of original 100
+        self.speed = 15 * 0.25  -- Half of original 30, still with 0.25 factor
         self.color = { 0.5, 0.5, 0.5, 1 } -- Gray
         self.size = 20
     end
@@ -106,7 +106,8 @@ function Enemy:draw(offsetX, offsetY, tileSize)
     -- Draw health bar
     local healthBarWidth = tileSize * 0.8
     local healthBarHeight = 5
-    local healthPercentage = self.health / 100
+    local maxHealth = self.type == "fast" and 30 or 50
+    local healthPercentage = self.health / maxHealth
 
     -- Background
     love.graphics.setColor(0.3, 0.3, 0.3, 0.7)
