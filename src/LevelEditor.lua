@@ -248,9 +248,26 @@ function LevelEditor:saveLevel()
 
     -- Convert to JSON and save
     local jsonData = json.encode(levelData)
-    love.filesystem.write(self.levelPath, jsonData)
+    local success = love.filesystem.write(self.levelPath, jsonData)
 
-    return true
+    -- Set save message and timer for feedback
+    if success then
+        self.saveMessage = "Level saved successfully!"
+        self.saveMessageTimer = 3 -- Show for 3 seconds
+
+        -- Also update the button message for redundancy
+        self.editorButtons.save.saveMessage = "Saved to: " .. love.filesystem.getSaveDirectory() .. "/levels/custom"
+        self.editorButtons.save.messageTimer = 3
+    else
+        self.saveMessage = "Error saving level!"
+        self.saveMessageTimer = 3
+
+        -- Also update the button message
+        self.editorButtons.save.saveMessage = "Failed to save!"
+        self.editorButtons.save.messageTimer = 3
+    end
+
+    return success
 end
 
 -- Create a new level with default settings
@@ -417,9 +434,30 @@ function LevelEditor:draw()
 
     -- Draw save message if active
     if self.saveMessage and self.saveMessageTimer > 0 then
-        love.graphics.setColor(0, 1, 0, 1) -- Green for success
-        love.graphics.setFont(love.graphics.newFont(16))
-        love.graphics.print(self.saveMessage, 20, 50)
+        -- Draw message background
+        love.graphics.setColor(0, 0, 0, 0.7)
+        local font = love.graphics.newFont(20)
+        love.graphics.setFont(font)
+        local msgWidth = font:getWidth(self.saveMessage)
+        local msgHeight = font:getHeight()
+
+        -- Position in the center top of the screen
+        local msgX = (screenWidth - msgWidth) / 2
+        local msgY = 60
+
+        -- Draw background
+        love.graphics.rectangle("fill", msgX - 15, msgY - 10, msgWidth + 30, msgHeight + 20, 5, 5)
+
+        -- Draw message
+        love.graphics.setColor(0, 1, 0, 1)     -- Green for success
+        if self.saveMessage:find("Error") then
+            love.graphics.setColor(1, 0, 0, 1) -- Red for errors
+        end
+
+        love.graphics.print(self.saveMessage, msgX, msgY)
+
+        -- Reset font
+        love.graphics.setFont(self.editorFont)
     end
 end
 
@@ -743,11 +781,11 @@ function LevelEditor:mousepressed(x, y, button)
                         local row = self.map[mapY]
                         local currentTile = row:sub(mapX, mapX)
                         local newTile = currentTile == "1" and "0" or "1"
-                        
+
                         -- Store the original tile type for drag toggling
                         self.lastToggledTileType = currentTile
                         self.isMouseDown = true
-                        
+
                         self.map[mapY] = row:sub(1, mapX - 1) .. newTile .. row:sub(mapX + 1)
                     else
                         -- Check if clicked on a waypoint
@@ -1018,13 +1056,13 @@ function LevelEditor:mousemoved(x, y, dx, dy)
         -- Handle tile toggling during mouse drag
         local mapX = math.floor((x - self.mapOffsetX) / self.tileSize) + 1
         local mapY = math.floor((y - self.mapOffsetY) / self.tileSize) + 1
-        
+
         -- Make sure drag is within map bounds
         if mapX >= 1 and mapX <= #self.map[1] and mapY >= 1 and mapY <= #self.map then
             -- Only change tiles that match the original tile type
             local row = self.map[mapY]
             local currentTile = row:sub(mapX, mapX)
-            
+
             -- Only toggle if the current tile matches the type we started with
             if currentTile == self.lastToggledTileType then
                 local newTile = currentTile == "1" and "0" or "1"
